@@ -68,8 +68,8 @@ def get_gpu_temperatures():
         return []
 
 def set_fan_speed(fan_speed):
-    if not (0 <= fan_speed <= 60):
-        logger.error(f"Invalid fan speed value ({fan_speed}). Must be between 0 and 60.")
+    if not (0 <= fan_speed <= 64):
+        logger.error(f"Invalid fan speed value ({fan_speed}). Must be between 0 and 64.")
         return
 
     # Convert to hex and remove the "0x" prefix
