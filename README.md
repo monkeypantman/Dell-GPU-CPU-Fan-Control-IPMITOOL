@@ -24,6 +24,8 @@ sudo apt install python3
 mkdir /opt/fan_control
 cd /opt/fan_ctrl
 wget https://raw.githubusercontent.com/monkeypantman/Dell-GPU-CPU-Fan-Control-IPMITOOL/main/fan_ctrl.py
+# make executable
+sudo chmod +x fan_ctrl.py
 
 # Then move to the services folder  
 cd /etc/systemd/system
