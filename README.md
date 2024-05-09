@@ -20,13 +20,13 @@ sudo apt install python3
 #Once all this is installed, take the fan_ctrl.py file and store it in /opt/fan_control
 mkdir /opt/fan_control
 cd /opt/fan_ctrl
-wget (URL)
+wget https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.py
 
 #Then move to the services folder  
 cd /etc/systemd/system
 
 #get the service file fan_ctrl.service
-wget (URL)
+wget [(URL)](https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.service)
 
 #Enable the service and start then check the status
 systemctl daemon-reload
