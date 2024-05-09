@@ -26,7 +26,7 @@ wget https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctr
 cd /etc/systemd/system
 
 #get the service file fan_ctrl.service
-wget [(URL)](https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.service)
+wget https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.service
 
 #Enable the service and start then check the status
 systemctl daemon-reload
