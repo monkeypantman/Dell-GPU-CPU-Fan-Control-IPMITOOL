@@ -1,6 +1,9 @@
-# dell_GPU_CPU_Fan_Control
-A python script to control the Poweredge fans through IPMItool based on GPU and CPU temperatures
+# Dell-GPU-CPU-Fan-Control-IPMITOOL
+# A python script to control the Poweredge fans through IPMItool based on GPU and CPU temperatures
 
+#This has been tested on a Dell PowerEdge R730 and R410. It should work on any Poweredge server that responds to ipmitool commands.
+
+#Adjust the temperatures and fan control settings along with loop times in the fan_ctrl.py script.
 
 There are a few prerequisites for this. 
 sudp apt update 
@@ -20,13 +23,13 @@ sudo apt install python3
 #Once all this is installed, take the fan_ctrl.py file and store it in /opt/fan_control
 mkdir /opt/fan_control
 cd /opt/fan_ctrl
-wget https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.py
+wget https://github.com/monkeypantman/Dell-GPU-CPU-Fan-Control-IPMITOOL/blob/main/fan_ctrl.py
 
 #Then move to the services folder  
 cd /etc/systemd/system
 
 #get the service file fan_ctrl.service
-wget https://github.com/monkeypantman/dell_GPU_CPU_Fan_Control/blob/main/fan_ctrl.service
+wget https://github.com/monkeypantman/Dell-GPU-CPU-Fan-Control-IPMITOOL/blob/main/fan_ctrl.service
 
 #Enable the service and start then check the status
 systemctl daemon-reload
