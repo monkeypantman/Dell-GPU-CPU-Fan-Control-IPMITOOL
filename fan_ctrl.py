@@ -11,14 +11,14 @@ IPMI_PASS = "calvin"
 # Fan speed thresholds (CPU)
 CPU_MIN_TEMP = 35
 CPU_MAX_TEMP = 55
-CPU_MIN_FAN = 16  # Hex 10
-CPU_MAX_FAN = 100  # Hex 64
+CPU_MIN_FAN = 10  # Minimum fan speed in decimal
+CPU_MAX_FAN = 100  # Maximum fan speed in decimal
 
 # Fan speed thresholds (GPU)
 GPU_MIN_TEMP = 45
 GPU_MAX_TEMP = 70
-GPU_MIN_FAN = 16  # Hex 10
-GPU_MAX_FAN = 100  # Hex 64
+GPU_MIN_FAN = 10  # Minimum fan speed in decimal
+GPU_MAX_FAN = 100  # Maximum fan speed in decimal
 
 # Refresh interval (seconds)
 REFRESH_INTERVAL = 20
@@ -66,17 +66,15 @@ def main():
         core_temps = [float(line.split()[1]) for line in core_temp_lines]
 
         if core_temps:
-            # Calculate average CPU temperature
             avg_cpu_temp = sum(core_temps) / len(core_temps)
             cpu_fan_speed = calculate_fan_speed(avg_cpu_temp, CPU_MIN_TEMP, CPU_MAX_TEMP, CPU_MIN_FAN, CPU_MAX_FAN)
         else:
-            # No temperature data available, set fan speed to minimum
             cpu_fan_speed = CPU_MIN_FAN
 
         # Set fan speed
         fan_speed = max(gpu_fan_speed, cpu_fan_speed)
-        fan_speed_hex = format(fan_speed, 'x').rjust(2, '0')
-        command = f"ipmitool -I lanplus -H {IPMI_HOST} -U {IPMI_USER} -P {IPMI_PASS} raw 0x30 0x30 0x02 0xff {fan_speed_hex}"
+        fan_speed_hex = format(fan_speed, '02x').upper()  # Convert to uppercase hexadecimal
+        command = f"ipmitool -I lanplus -H {IPMI_HOST} -U {IPMI_USER} -P {IPMI_PASS} raw 0x30 0x30 0x02 0xff 0x{fan_speed_hex}"
         run_ipmitool_command(command)
 
         time.sleep(REFRESH_INTERVAL)
