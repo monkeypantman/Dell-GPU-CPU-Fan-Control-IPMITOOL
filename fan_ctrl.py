@@ -8,7 +8,7 @@ IPMI_HOST = "192.168.1.70"
 IPMI_USER = "root"
 IPMI_PASS = "calvin"
 
-# Fan speed thresholds (CPU)
+# Fan speed thresholds
 CPU_MIN_TEMP = 35
 CPU_MAX_TEMP = 55
 CPU_MIN_FAN = 10  # Minimum fan speed in decimal
@@ -72,12 +72,4 @@ def main():
             cpu_fan_speed = CPU_MIN_FAN
 
         # Set fan speed
-        fan_speed = max(gpu_fan_speed, cpu_fan_speed)
-        fan_speed_hex = format(fan_speed, '02x').upper()  # Convert to uppercase hexadecimal
-        command = f"ipmitool -I lanplus -H {IPMI_HOST} -U {IPMI_USER} -P {IPMI_PASS} raw 0x30 0x30 0x02 0xff 0x{fan_speed_hex}"
-        run_ipmitool_command(command)
-
-        time.sleep(REFRESH_INTERVAL)
-
-if __name__ == '__main__':
-    main()
+        fan_speed = max(gpu_fan_speed,
