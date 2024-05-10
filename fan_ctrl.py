@@ -24,60 +24,57 @@ GPU_MAX_FAN = 100  # Maximum fan speed in decimal
 REFRESH_INTERVAL = 20
 
 # Set up logging
-log_file_path = "/opt/fan_control/fan_control.log"
+LOG_FILE_PATH = "/opt/fan_control/fan_control.log"
 logger = logging.getLogger('FanControlLogger')
 logger.setLevel(logging.INFO)
-handler = RotatingFileHandler(log_file_path, maxBytes=10000, backupCount=1)
+
+handler = RotatingFileHandler(LOG_FILE_PATH, maxBytes=10000, backupCount=1)
+handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
 
-def run_ipmitool_command(command):
+def run_ipmi_command(command: str) -> None:
+    """Run an IPMI command using subprocess and log the result."""
     try:
-        subprocess.run(command, shell=True, check=True)
-        logger.info(f"Command executed: {command}")
+        output = subprocess.check_output(command, shell=True)
+        logger.info(f"Running command: {command} | Output: {output.decode()}")
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error executing command: {e}")
+        logger.error(f"Error running command: {e}")
 
-def get_temperatures(sensor_command):
+def get_temperatures(sensor_command: str) -> dict:
+    """Run a sensor command to retrieve temperature data and return the result."""
     try:
-        result = subprocess.run(sensor_command, capture_output=True, text=True, check=True)
-        return result.stdout
+        output = subprocess.check_output(sensor_command, shell=True)
+        temperatures = {}
+        for line in output.decode().splitlines:
+            if ":" in line:
+                _, value = line.strip().split(":")
+                temperatures[value.split()[0]] = int(value.split()[-1])
+        return temperatures
     except subprocess.CalledProcessError as e:
-        logger.error(f"Error reading temperatures: {e}")
-        return ""
+        logger.error(f"Error getting temperatures: {e}")
+        return {}
 
-def calculate_fan_speed(temp, min_temp, max_temp, min_fan, max_fan):
-    if temp <= min_temp:
+def calculate_fan_speed(temperature: int, min_temp: int, max_temp: int, min_fan: int, max_fan: int) -> int:
+    """Calculate the fan speed based on the input temperature."""
+    if temperature < min_temp:
         return min_fan
-    elif temp >= max_temp:
+    elif temperature > max_temp:
         return max_fan
     else:
-        return int((temp - min_temp) / (max_temp - min_temp) * (max_fan - min_fan) + min_fan)
+        return min(int(((temperature - min_temp) / (max_temp - min_temp)) * (max_fan - min_fan) + min_fan), max_fan)
 
-def main():
+def main() -> None:
+    """Main loop of the program."""
     while True:
-        # Get GPU temperature
-        gpu_temp_output = get_temperatures(['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader'])
-        gpu_temps = [int(temp.strip()) for temp in gpu_temp_output.splitlines() if temp.strip().isdigit()]
-        gpu_fan_speed = calculate_fan_speed(max(gpu_temps), GPU_MIN_TEMP, GPU_MAX_TEMP, GPU_MIN_FAN, GPU_MAX_FAN)
+        gpu_temperatures = get_temperatures("nvidia-smi")
+        cpu_temperature = int(subprocess.check_output(["sensors"], shell=True).decode().splitlines[-1].split(":")[1].split()[0])
+        gpu_fan_speed = calculate_fan_speed(gpu_temperatures.get("GPU", 0), GPU_MIN_TEMP, GPU_MAX_TEMP, GPU_MIN_FAN, GPU_MAX_FAN)
+        cpu_fan_speed = calculate_fan_speed(cpu_temperature, CPU_MIN_TEMP, CPU_MAX_TEMP, CPU_MIN_FAN, CPU_MAX_FAN)
 
-        # Get CPU temperature
-        cpu_temp_output = get_temperatures(['sensors', '-u'])
-        core_temp_lines = [line for line in cpu_temp_output.splitlines() if "Core" in line and "_input" in line]
-        core_temps = [float(line.split()[1]) for line in core_temp_lines]
-
-        if core_temps:
-            avg_cpu_temp = sum(core_temps) / len(core_temps)
-            cpu_fan_speed = calculate_fan_speed(avg_cpu_temp, CPU_MIN_TEMP, CPU_MAX_TEMP, CPU_MIN_FAN, CPU_MAX_FAN)
-        else:
-            cpu_fan_speed = CPU_MIN_FAN
-
-        # Set fan speed
-        fan_speed = max(gpu_fan_speed, cpu_fan_speed)
-        fan_speed_hex = format(fan_speed, '02x').upper()  # Convert to uppercase hexadecimal
-        command = f"ipmitool -I lanplus -H {IPMI_HOST} -U {IPMI_USER} -P {IPMI_PASS} raw 0x30 0x30 0x02 0xff 0x{fan_speed_hex}"
-        run_ipmitool_command(command)
+        command = f"ipmi set fan {gpu_fan_speed} on"
+        run_ipmi_command(command)
 
         time.sleep(REFRESH_INTERVAL)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
