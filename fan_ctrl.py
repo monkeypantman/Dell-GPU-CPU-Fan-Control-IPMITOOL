@@ -1,14 +1,14 @@
-import subprocess
-import time
 import logging
 from logging.handlers import RotatingFileHandler
+import subprocess
+import time
 
 # IPMI settings
 IPMI_HOST = "192.168.1.70"
 IPMI_USER = "root"
 IPMI_PASS = "calvin"
 
-# Fan speed thresholds
+# Fan speed thresholds (CPU)
 CPU_MIN_TEMP = 35
 CPU_MAX_TEMP = 55
 CPU_MIN_FAN = 10  # Minimum fan speed in decimal
@@ -53,23 +53,42 @@ def calculate_fan_speed(temp, min_temp, max_temp, min_fan, max_fan):
     else:
         return int((temp - min_temp) / (max_temp - min_temp) * (max_fan - min_fan) + min_fan)
 
+def get_cpu_temp():
+    cpu_temp_output = get_temperatures(['sensors', '-u'])
+    core_temp_lines = [line for line in cpu_temp_output.splitlines() if "Core" in line and "_input" in line]
+    if core_temp_lines:
+        return float(core_temp_lines[0].split()[1])
+    return None
+
+def get_gpu_temperatures():
+    gpu_temp_output = get_temperatures(['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader'])
+    gpu_temps = [int(temp.strip()) for temp in gpu_temp_output.splitlines() if temp.strip().isdigit()]
+    return gpu_temps
+
 def main():
     while True:
         # Get GPU temperature
-        gpu_temp_output = get_temperatures(['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader'])
-        gpu_temps = [int(temp.strip()) for temp in gpu_temp_output.splitlines() if temp.strip().isdigit()]
-        gpu_fan_speed = calculate_fan_speed(max(gpu_temps), GPU_MIN_TEMP, GPU_MAX_TEMP, GPU_MIN_FAN, GPU_MAX_FAN)
+        gpu_temperatures = get_gpu_temperatures()
+        if gpu_temperatures:
+            max_gpu_temp = max(gpu_temperatures)
+            gpu_fan_speed = calculate_fan_speed(max_gpu_temp, GPU_MIN_TEMP, GPU_MAX_TEMP, GPU_MIN_FAN, GPU_MAX_FAN)
+        else:
+            gpu_fan_speed = GPU_MIN_FAN
 
         # Get CPU temperature
-        cpu_temp_output = get_temperatures(['sensors', '-u'])
-        core_temp_lines = [line for line in cpu_temp_output.splitlines() if "Core" in line and "_input" in line]
-        core_temps = [float(line.split()[1]) for line in core_temp_lines]
-
-        if core_temps:
-            avg_cpu_temp = sum(core_temps) / len(core_temps)
-            cpu_fan_speed = calculate_fan_speed(avg_cpu_temp, CPU_MIN_TEMP, CPU_MAX_TEMP, CPU_MIN_FAN, CPU_MAX_FAN)
+        cpu_temp = get_cpu_temp()
+        if cpu_temp is not None:
+            cpu_fan_speed = calculate_fan_speed(cpu_temp, CPU_MIN_TEMP, CPU_MAX_TEMP, CPU_MIN_FAN, CPU_MAX_FAN)
         else:
             cpu_fan_speed = CPU_MIN_FAN
 
         # Set fan speed
-        fan_speed = max(gpu_fan_speed,
+        fan_speed = max(gpu_fan_speed, cpu_fan_speed)
+        fan_speed_hex = format(fan_speed, '02x').upper()  # Convert to uppercase hexadecimal
+        command = f"ipmitool -I lanplus -H {IPMI_HOST} -U {IPMI_USER} -P {IPMI_PASS} raw 0x30 0x30 0x02 0xff 0x{fan_speed_hex}"
+        run_ipmitool_command(command)
+
+        time.sleep(REFRESH_INTERVAL)
+
+if __name__ == '__main__':
+    main()
